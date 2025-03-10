@@ -1,4 +1,4 @@
-# Apple Visual Intelligence
+# Visual Intelligence
 
 A privacy-preserving visual data processing system that extracts meaningful information from scenes without storing or logging raw visual data.
 
