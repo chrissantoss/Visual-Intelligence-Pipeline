@@ -56,8 +56,9 @@ class SegmentationModel:
             # Set device
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             
-            # Load DeepLabV3 model
-            model = torchvision.models.segmentation.deeplabv3_resnet101(pretrained=True)
+            # Load DeepLabV3 model with latest weights
+            weights = torchvision.models.segmentation.DeepLabV3_ResNet101_Weights.DEFAULT
+            model = torchvision.models.segmentation.deeplabv3_resnet101(weights=weights)
             model.eval()
             model.to(device)
             
@@ -91,8 +92,18 @@ class SegmentationModel:
             with torch.no_grad():
                 output = self.model(input_batch)["out"][0]
             
-            # Get segmentation mask
-            output_predictions = output.argmax(0).byte().cpu().numpy()
+            # Apply softmax to get probabilities
+            probabilities = torch.nn.functional.softmax(output, dim=0)
+            
+            # Get segmentation mask with confidence threshold
+            confidence_threshold = 0.75  # Increased threshold for higher confidence
+            max_probs, output_predictions = probabilities.max(dim=0)
+            output_predictions = output_predictions.byte().cpu().numpy()
+            max_probs = max_probs.cpu().numpy()
+            
+            # Apply confidence threshold
+            confident_mask = max_probs > confidence_threshold
+            output_predictions[~confident_mask] = 0
             
             # Get unique class IDs in the mask
             unique_class_ids = np.unique(output_predictions)
@@ -101,6 +112,12 @@ class SegmentationModel:
             # Get class names for the unique class IDs
             class_names = [self.class_names[class_id] for class_id in unique_class_ids]
             
+            # Get confidence scores for detected classes
+            class_confidences = {
+                self.class_names[class_id]: float(max_probs[output_predictions == class_id].mean())
+                for class_id in unique_class_ids
+            }
+            
             # Compress and encode mask
             compressed_mask = zlib.compress(output_predictions.tobytes())
             mask_base64 = base64.b64encode(compressed_mask).decode("utf-8")
@@ -108,6 +125,7 @@ class SegmentationModel:
             return {
                 "class_ids": unique_class_ids.tolist(),
                 "class_names": class_names,
+                "class_confidences": class_confidences,
                 "mask_base64": mask_base64,
             }
         

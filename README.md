@@ -1,95 +1,72 @@
-# Visual Intelligence
+# Apple Visual Intelligence Demo
 
-A privacy-preserving visual data processing system that extracts meaningful information from scenes without storing or logging raw visual data.
+This project demonstrates privacy-preserving visual intelligence capabilities including object detection, semantic segmentation, and depth estimation.
 
-## Project Overview
+## Features
 
-This system processes visual data to understand scenes (identifying objects, spatial relationships, and depth information) while ensuring user privacy through:
+- Object Detection: Identifies and localizes objects in images
+- Semantic Segmentation: Provides pixel-level classification of image content
+- Depth Estimation: Generates depth maps from single images
+- Privacy Protection: Applies differential privacy to protect sensitive information
 
-- In-memory processing without storing raw visual data
-- Differential privacy techniques to add noise to intermediate representations
-- Scalable architecture for high-throughput processing
-- Machine learning models for object detection, semantic segmentation, and depth estimation
+## Setup
 
-## Architecture
-
-![Architecture Diagram](docs/architecture.png)
-
-The system consists of the following components:
-
-1. **Data Ingestion Pipeline**: Handles incoming visual data streams using Kafka
-2. **Machine Learning Models**: Processes visual data using YOLOv8, DeepLabV3, and MiDaS
-3. **Privacy Layer**: Applies differential privacy to intermediate representations
-4. **API Layer**: Provides endpoints for downstream systems to query scene information
-5. **Database**: Stores only processed, anonymized scene data
-
-## Setup and Installation
-
-### Prerequisites
-
-- Python 3.9+
-- Docker and Docker Compose
-- Kafka (for production deployment)
-
-### Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/apple-visual-intelligence.git
-   cd apple-visual-intelligence
-   ```
-
-2. Create a virtual environment and install dependencies:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. Set up environment variables:
-   ```
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
-
-## Usage
-
-### Running the API Server
-
-```
-uvicorn app.main:app --reload
+1. Create a virtual environment and activate it:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 ```
 
-The API will be available at http://localhost:8000
-
-### API Endpoints
-
-- `POST /api/analyze_scene`: Analyze a scene from an image
-- `GET /api/scene_summary`: Get aggregated scene information
-
-## Testing
-
-Run the test suite:
-
-```
-pytest
+2. Install dependencies:
+```bash
+pip install -r requirements.txt
 ```
 
-## Privacy Guarantees
+3. Download the YOLOv8 model:
+```bash
+python download_sample_images.py
+```
 
-This system ensures privacy by:
+## Running the Demo
 
-1. Never storing or logging raw visual data
-2. Processing all data in-memory
-3. Applying differential privacy with ε = 1.0 to intermediate representations
-4. Storing only anonymized scene information
+1. Start the API server:
+```bash
+python -m uvicorn app.main:app --reload
+```
 
-## Performance Metrics
+2. In a new terminal, run the demo script:
+```bash
+python demo.py
+```
 
-- Latency: ~200ms per frame
-- Throughput: Up to 20 frames per second per instance
-- Privacy: ε = 1.0 differential privacy guarantee
+The demo will:
+- Create a sample image with multiple objects
+- Send it to the API for analysis
+- Display the results including:
+  - Object detection with bounding boxes
+  - Semantic segmentation mask
+  - Depth estimation map
+  - Privacy metrics
 
-## License
+## API Documentation
 
-MIT # Visual-Intelligence-API
+Once the server is running, you can access the API documentation at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+## Privacy Features
+
+The system implements differential privacy to protect sensitive information:
+- Adds calibrated noise to object detection results
+- Protects exact locations and dimensions
+- Configurable privacy level (epsilon parameter)
+- No raw image data is stored
+
+## Example Output
+
+The demo will show:
+1. Console output with detected objects and metrics
+2. Visualization window with three panels:
+   - Left: Original image with detected objects
+   - Middle: Semantic segmentation visualization
+   - Right: Depth map visualization
