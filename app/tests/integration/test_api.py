@@ -5,10 +5,16 @@ import os
 import cv2
 import numpy as np
 from pathlib import Path
-
 from app.main import app
+from app.core.models import load_models
 
+# Create test client
 client = TestClient(app)
+
+@pytest.fixture(autouse=True, scope="module")
+async def setup_models():
+    """Load models before running tests."""
+    await load_models()
 
 def get_test_image():
     """Get a test image for API testing."""

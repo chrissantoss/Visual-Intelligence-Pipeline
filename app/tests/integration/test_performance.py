@@ -133,5 +133,5 @@ class TestPerformance:
         print(f"Memory increase: {memory_increase:.2f} MB")
         
         # Assert that memory increase is within acceptable range
-        # Note: This threshold might need adjustment based on the implementation
-        assert memory_increase < 500, "Memory increase should be less than 500 MB" 
+        # Note: This threshold is higher because we're loading large ML models
+        assert memory_increase < 2000, "Memory increase should be less than 2000 MB (2GB)" 

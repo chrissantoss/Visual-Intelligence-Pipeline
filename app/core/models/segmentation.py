@@ -79,9 +79,9 @@ class SegmentationModel:
         try:
             # Convert image to RGB if it's BGR (OpenCV format)
             if image.shape[2] == 3:
-                image_rgb = image[..., ::-1] if image.shape[2] == 3 else image
+                image_rgb = image[..., ::-1].copy() if image.shape[2] == 3 else image.copy()
             else:
-                image_rgb = image
+                image_rgb = image.copy()
             
             # Preprocess image
             input_tensor = self.preprocess(image_rgb)

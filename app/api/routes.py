@@ -41,48 +41,32 @@ async def analyze_scene(
     """
     start_time = time.time()
     
+    logger.info(f"Received analyze_scene request: file={file is not None}, base64_image={base64_image is not None}")
+    
     try:
-        # Log request details for debugging
-        logger.info(f"Received analyze_scene request: file={file is not None}, base64_image={base64_image is not None}")
-        
-        # Add more detailed logging
-        if base64_image:
-            logger.info(f"base64_image type: {type(base64_image)}")
-            logger.info(f"base64_image dict: {base64_image.dict()}")
-            logger.info(f"base64_image.image exists: {hasattr(base64_image, 'image') and base64_image.image is not None}")
-            if hasattr(base64_image, 'image') and base64_image.image:
-                logger.info(f"base64_image.image length: {len(base64_image.image)}")
-        
         # Get image data
         if file:
-            # Process uploaded file
             logger.info(f"Processing file: {file.filename}")
-            contents = await file.read()
-            image_data = contents
-        elif base64_image and hasattr(base64_image, 'image') and base64_image.image:
-            # Process base64-encoded image
-            logger.info("Processing base64-encoded image")
-            image_data = base64.b64decode(base64_image.image)
+            image_data = await file.read()
+        elif base64_image:
+            logger.info("Processing base64 image")
+            try:
+                image_data = base64.b64decode(base64_image.image)
+            except Exception as e:
+                logger.error(f"Error decoding base64 image: {str(e)}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid base64 image data",
+                )
         else:
             # Try to get the image from the request body directly
             logger.info("Attempting to get image from request body directly")
             try:
-                # Get the raw request body
-                body = await request.body()
-                body_json = json.loads(body)
-                logger.info(f"Request body: {str(body_json)[:100]}...")
-                
-                # Check if the image is in the expected format
-                if isinstance(body_json, dict) and 'base64_image' in body_json and isinstance(body_json['base64_image'], dict) and 'image' in body_json['base64_image']:
-                    base64_str = body_json['base64_image']['image']
-                    logger.info(f"Found base64 image in request body, length: {len(base64_str)}")
-                    image_data = base64.b64decode(base64_str)
+                body = await request.json()
+                if "image" in body:
+                    image_data = base64.b64decode(body["image"])
                 else:
-                    logger.error("No image found in request body")
-                    raise HTTPException(
-                        status_code=400,
-                        detail="No image provided. Please upload a file or provide a base64-encoded image.",
-                    )
+                    raise ValueError("No image field in request body")
             except Exception as e:
                 logger.error(f"Error parsing request body: {str(e)}")
                 raise HTTPException(
@@ -91,27 +75,32 @@ async def analyze_scene(
                 )
         
         # Process the image
-        models = get_models()
-        result = await process_image(image_data, models)
-        
-        # Calculate processing time
-        processing_time = time.time() - start_time
-        
-        # Add processing time to the response
-        result["processing_time"] = processing_time
-        
-        return result
-    
+        try:
+            models = get_models()
+            result = await process_image(image_data, models)
+            
+            # Calculate processing time
+            processing_time = time.time() - start_time
+            
+            # Add processing time to the response
+            result["processing_time"] = processing_time
+            
+            return result
+        except Exception as e:
+            logger.error(f"Error processing image: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=str(e),
+            )
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error processing image: {str(e)}")
+        logger.error(f"Error processing request: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing image: {str(e)}",
+            detail="Internal server error",
         )
-    finally:
-        # Ensure image data is deleted from memory
-        if 'image_data' in locals():
-            del image_data
 
 # Add a simple test endpoint for debugging
 @router.post("/test_image")

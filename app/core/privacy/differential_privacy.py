@@ -74,107 +74,64 @@ def _apply_laplace_noise(features: np.ndarray, epsilon: float) -> np.ndarray:
     
     return noisy_features
 
-def _apply_noise_to_detections(
-    detections: List[Dict[str, Any]], epsilon: float
-) -> List[Dict[str, Any]]:
-    """
-    Apply noise to object detection results.
-    
-    Args:
-        detections: Object detection results
-        epsilon: Privacy parameter
-        
-    Returns:
-        Object detection results with noise applied
-    """
-    # Calculate sensitivity for bounding boxes
-    sensitivity = 0.1  # Small perturbation to bounding boxes
-    
-    # Calculate scale parameter
-    scale = sensitivity / epsilon
-    
-    # Apply noise to each detection
+def _apply_noise_to_detections(detections: List[Dict[str, Any]], epsilon: float) -> List[Dict[str, Any]]:
+    """Apply Laplace noise to object detection results."""
     noisy_detections = []
+    
     for detection in detections:
-        # Create a copy of the detection
+        # Deep copy the detection to avoid modifying the original
         noisy_detection = detection.copy()
+        noisy_detection["bounding_box"] = detection["bounding_box"].copy()
         
         # Add noise to bounding box coordinates
-        bbox = noisy_detection["bounding_box"]
-        bbox["x1"] += np.random.laplace(0, scale)
-        bbox["y1"] += np.random.laplace(0, scale)
-        bbox["x2"] += np.random.laplace(0, scale)
-        bbox["y2"] += np.random.laplace(0, scale)
+        sensitivity = 10.0  # Assuming pixel coordinates can change by up to 10 pixels
+        noise_scale = sensitivity / epsilon
         
-        # Ensure coordinates are valid
-        bbox["x1"] = max(0, bbox["x1"])
-        bbox["y1"] = max(0, bbox["y1"])
-        bbox["x2"] = max(bbox["x1"] + 1, bbox["x2"])
-        bbox["y2"] = max(bbox["y1"] + 1, bbox["y2"])
+        for key in ["x1", "y1", "x2", "y2"]:
+            noise = np.random.laplace(0, noise_scale)
+            noisy_detection["bounding_box"][key] = float(detection["bounding_box"][key] + noise)
         
-        # Add noise to confidence
-        confidence_scale = 0.05 / epsilon  # Smaller scale for confidence
-        noisy_detection["confidence"] += np.random.laplace(0, confidence_scale)
-        noisy_detection["confidence"] = max(0, min(1, noisy_detection["confidence"]))
+        # Add noise to confidence score
+        confidence_sensitivity = 0.1
+        confidence_noise = np.random.laplace(0, confidence_sensitivity / epsilon)
+        noisy_detection["confidence"] = max(0.0, min(1.0, float(detection["confidence"] + confidence_noise)))
         
         noisy_detections.append(noisy_detection)
     
     return noisy_detections
 
-def _apply_noise_to_segmentation(
-    segmentation: Dict[str, Any], epsilon: float
-) -> Dict[str, Any]:
-    """
-    Apply noise to segmentation results.
+def _apply_noise_to_segmentation(segmentation: Dict[str, Any], epsilon: float) -> Dict[str, Any]:
+    """Apply Laplace noise to segmentation results."""
+    # Deep copy the segmentation to avoid modifying the original
+    noisy_segmentation = segmentation.copy()
     
-    For segmentation, we don't modify the actual mask but add noise to the
-    class probabilities, which affects the reported classes.
-    
-    Args:
-        segmentation: Segmentation results
-        epsilon: Privacy parameter
+    # Add noise to class probabilities (if available)
+    if "class_probabilities" in segmentation:
+        sensitivity = 0.1
+        noise_scale = sensitivity / epsilon
+        noisy_probabilities = []
         
-    Returns:
-        Segmentation results with noise applied
-    """
-    # We don't modify the base64-encoded mask directly
-    # Instead, we could add noise to the class IDs or class names
-    # For simplicity, we'll just return the original segmentation
-    # In a real implementation, you would decode the mask, add noise, and re-encode
+        for prob in segmentation["class_probabilities"]:
+            noise = np.random.laplace(0, noise_scale)
+            noisy_prob = max(0.0, min(1.0, float(prob + noise)))
+            noisy_probabilities.append(noisy_prob)
+        
+        noisy_segmentation["class_probabilities"] = noisy_probabilities
     
-    return segmentation
+    return noisy_segmentation
 
-def _apply_noise_to_depth(
-    depth: Dict[str, Any], epsilon: float
-) -> Dict[str, Any]:
-    """
-    Apply noise to depth estimation results.
-    
-    For depth estimation, we don't modify the actual depth map but add noise to
-    the min and max depth values.
-    
-    Args:
-        depth: Depth estimation results
-        epsilon: Privacy parameter
-        
-    Returns:
-        Depth estimation results with noise applied
-    """
-    # Calculate sensitivity for depth values
-    sensitivity = 0.1  # Small perturbation to depth values
-    
-    # Calculate scale parameter
-    scale = sensitivity / epsilon
-    
-    # Create a copy of the depth results
+def _apply_noise_to_depth(depth: Dict[str, Any], epsilon: float) -> Dict[str, Any]:
+    """Apply Laplace noise to depth estimation results."""
+    # Deep copy the depth to avoid modifying the original
     noisy_depth = depth.copy()
     
-    # Add noise to min and max depth
-    noisy_depth["min_depth"] += np.random.laplace(0, scale)
-    noisy_depth["max_depth"] += np.random.laplace(0, scale)
+    # Add noise to min/max depth values
+    sensitivity = 1.0  # Assuming depth values can change by up to 1 unit
+    noise_scale = sensitivity / epsilon
     
-    # Ensure min_depth < max_depth
-    if noisy_depth["min_depth"] >= noisy_depth["max_depth"]:
-        noisy_depth["max_depth"] = noisy_depth["min_depth"] + 0.1
+    for key in ["min_depth", "max_depth"]:
+        if key in depth:
+            noise = np.random.laplace(0, noise_scale)
+            noisy_depth[key] = float(depth[key] + noise)
     
     return noisy_depth 
