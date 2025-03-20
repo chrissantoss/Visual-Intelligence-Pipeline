@@ -1,4 +1,4 @@
-# Apple Visual Intelligence Demo
+# Visual Intelligence Demo
 
 This project demonstrates privacy-preserving visual intelligence capabilities including object detection, semantic segmentation, and depth estimation.
 
