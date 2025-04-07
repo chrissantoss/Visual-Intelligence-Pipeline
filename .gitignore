@@ -50,6 +50,7 @@ data/sample/
 
 # Environment variables
 .env
+.env.example
 
 # Docker
 .dockerignore
